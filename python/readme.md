@@ -1,22 +1,29 @@
-# Utilisation du Ludik-Hat avec Python
+# Utilisation du Ludik-Hat avec Python3
 
-Cette section reprend l'utilisation du Ludik-Hat avec le langage MicroPython.
+Cette section reprend l'utilisation du Ludik-Hat avec le langage Python3.
 
 La sérigraphie de la carte contient de nombreuses informations permettant d'identifier les GPIOs utilisés par les différents éléments.
 
 ![HAT Ludik avec Python](docs/_static/HAT-LUDIK-PYTHON.jpg)
 
-Le Ludik-Hat utilise la bibliothèque `gpiozero`, celle-ci est déjà installée avec le système d'exploitation Raspberry-Pi OS.
+# Installation
+Le Ludik-Hat utilise la bibliothèque python `rpi_ws281x` et `gpiozero`.
 
-`pip install rpi_ws281x`
+```
+sudo pip install rpi_ws281x
+sudo pip3 install rpi_ws281x
+
+```
+
+`gpiozero` est déja installé avec le système d'exploitation Raspberry-Pi OS.
 
 # Tester
 
 Tous les exemples sont disponibles dans le sous-répertoire [python/examples](python/examples).
 
-Les différentes exemples peuvent être testés avec la syntaxe `python nom_du_fichier.py`
+Les différentes exemples peuvent être testés avec la syntaxe `python3 nom_du_fichier.py`
 
-Ex: `python leds.py`
+Ex: `python3 leds.py`
 
 ## LEDs
 
@@ -242,3 +249,103 @@ time.sleep( 1 )
 
 buz.stop()
 ```
+
+## NeoPixel
+
+La carte est équipées de 4 led NeoPixel adressable (WS2812) commandable via une broche de donnée (GPIO 18).
+
+L'utilisation des LEDs NéoPixels nécessite l'installation du module python `rpi_ws281x` (voir section "installation").
+
+Les exemples [neopixel_simple.py](examples/neopixel_simple.py) et [neopixels.py](examples/neopixels.py) __doivent être exécutés avec "sudo python3"__.
+
+``` python
+from rpi_ws281x import Color, PixelStrip, ws
+
+
+# Configuration des NeoPixels:
+LED_COUNT = 4          # Nbre de Pixels.
+LED_PIN = 18           # GPIO utilisé pour la transmission des données (doit supporter PWM!).
+LED_FREQ_HZ = 800000   # Vitesse du bys (habituellement 800khz)
+LED_DMA = 10           # Canal DMA à utiliser (essayer le 10)
+LED_BRIGHTNESS = 255   # Luminosité: 0 pour minimum et 255 pour le maximum
+LED_INVERT = False     # True pour inverser le signal (si un transistor est utilisé comme level shifter)
+LED_CHANNEL = 0
+LED_STRIP = ws.WS2812_STRIP
+
+# Programme principal:
+if __name__ == '__main__':
+    # Créer l'objet NeoPixel.
+    strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
+    # Initialiser la bibliothèque.
+    strip.begin()
+
+    strip.setPixelColor( 0, Color(255,0,0)) # Rouge
+    strip.setPixelColor( 1, Color(0,255,0)) # Vert
+    strip.setPixelColor( 2, Color(0,0,255)) # Bleu
+    strip.setPixelColor( 3, Color(255,255,255)) # Blanc
+
+    strip.show() # envoyer vers les pixels
+```
+
+Pour exécuter l'exemple, utiliser: `sudo python3 neopixel_simple.py`
+
+Note: si vous obtenez le message "`RuntimeError: ws2811_init failed with code -5 (mmap() failed) Erreur de segmentation`" c'est que script n'a pas été exécuté avec un "__sudo__".
+
+# Ecran OLED I2C
+
+Dans l'exemple suivant, nous allons tester un écran OLED 128x64 pixels (3.3V, I2C).
+
+Il s'agit de l'[écran OLED d'Olimex](https://shop.mchobby.be/product.php?id_product=1411) branché sur l'un des port I2C Qwiic/StemmaQt du Ludik Hat à l'aide d'un [câble de raccordement crocodile JST-SH](https://shop.mchobby.be/product.php?id_product=2113).
+
+![Ecran OLED I2C sur Ludik HAT](docs/_static/HAT-LUDIK-OLED.jpg)
+
+La bibliothèque Adafruit_Python_SSD1306 sera utilisée pour manipuler le contenu de l'afficheur.
+
+## installation
+
+```
+cd ~
+git clone https://github.com/adafruit/Adafruit_Python_SSD1306.git
+cd Adafruit_Python_SSD1306
+sudo python3 setup.py install
+
+sudo pip3 install Adafruit_BBIO
+sudo pip3 install pillow
+```
+
+## Utilisation
+
+Les quelques lignes suivantes peuvent être saisies dans un interpréteur Python3.
+
+``` python
+import Adafruit_SSD1306
+from PIL import Image, ImageDraw, ImageFont
+disp = Adafruit_SSD1306.SSD1306_128_64(rst=None)
+
+# Initialise l'écran - init display
+disp.begin()
+
+# Efface l'écran - Clear display.
+disp.clear()
+disp.display()
+
+
+width = disp.width
+height = disp.height
+image = Image.new('1', (width, height))
+
+# On créé un objet sur lequel on va dessiner
+draw = ImageDraw.Draw(image)
+
+# Charge la font par défaut
+font = ImageFont.load_default()
+
+# On écrit du texte dans le coin de l'écran en blanc- Draw some text
+draw.text((0,0), 'Hello World', font=font, fill=255)
+
+# Actualise l'affichage
+disp.image(image)
+disp.display()
+```
+
+Le code est disponible dans le fichier d'exemple [oled.py](examples/oled.py)
