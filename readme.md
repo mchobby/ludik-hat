@@ -40,7 +40,7 @@ Utiliser la commande `sudo reboot`dans un terminal pour redémarrer le Raspberry
 Les liens ci-dessous renvoient vers les différentes documentations:
 * [Utiliser Ludik-Hat avec Python](python/readme.md)
 * Utiliser Ludik-Hat avec Scratch __à faire__
-* Utiliser Ludik-Hat avec C __à faire__
+* [Utiliser Ludik-Hat avec C](c/readme.md)
 * Utiliser Ludik-Hat avec MicroPython __à faire__
 
 # Ressources
