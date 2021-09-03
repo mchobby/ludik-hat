@@ -324,7 +324,7 @@ Read 35/200: ADC ch3 = 506
 
 ### Lecture de la Photo-Résistance
 
-La photo-résistance peut être testé avec le programme `analog.cpp`, il suffit de remplacer la ligne:
+La photo-résistance peut être testé avec le programme d'exemple [analog.cpp](examples/analog/analog.cpp), il suffit de remplacer la ligne:
 
 ``` c++
 // Entrée du MCP3008 à lire - entry to read on the MCP3008
@@ -454,11 +454,112 @@ Vert 506 : Horz 507
 
 ## Entrées analogiques supplémentaires
 
-ToDo
+Les 4 entrées analogiques encore disponibles sur le MCP3008 restent à disposition et porte les numéros A4 à A7 (correspondant aux canaux 4 à 7).
+
+![Entrées analogiques encore disponibles](../python/docs/_static/analog_inputs-00.jpg)
+
+Celles-ci peuvent donc être utilisées avec du matériel analogique (comme des potentiomètres). __Attention à ne jamais dépasser 3.3V sur une entrée analogique.__
+
+L'exemple ci-dessous permet de relever la tension analogique sur l'entrée A6 (canal 6 du MCP3008).
+
+![Entrées analogiques encore disponibles](../python/docs/_static/analog_inputs-01.jpg)
+
+L'entrée analogique A6 peut être testé avec le programme d'exemple [analog.cpp](examples/analog/analog.cpp), il suffit de remplacer la ligne:
+
+``` c++
+// Entrée du MCP3008 à lire - entry to read on the MCP3008
+#define ADC_CHANNEL POT_ADC_INPUT
+```
+
+avec
+
+``` c++
+// Entrée du MCP3008 à lire - entry to read on the MCP3008
+#define ADC_CHANNEL 6
+```
+
+Ce qui permettra de lire l'entrée analogique.
 
 ## Capteur de température DS18B20 (1-Wire)
 
-ToDo
+Lorsque le support 1-Wire est activé dans le menu interface du Raspberry-Pi (voir utilitaire `raspi-config`) alors les périphériques 1-Wire sont accessibles par l'intermédiaire du système de fichiers à l'emplacement `/sys/bus/w1/devices/28-00*/w1_slave` .
+
+Le programme [read_ds18b20.cpp](examples/ds18b20/read_ds18b20.cpp) :
+1. liste les sondes DS18B20 connectées sur le bus 1Wire
+2. sélectionne la première sonde trouvée
+3. Lit la température 1 fois par seconde
+
+Il s'agit principalement d'accès fichiers! La seule subtilité réside au niveau du pointer `w1_addr` (pointeur vers une chaîne de caractères).
+
+`w1_addr` permet d'identifier l'adresse 1Wire (un nom de fichier) sélectionnée pour lire la température.
+
+``` c++
+#include <iostream>
+#include <stdio.h>
+#include <string>
+#include <unistd.h> // sleep
+#include "ds18b20.h"
+
+#include <glob.h>
+
+using namespace std;
+
+char sys_path[] = "/sys/bus/w1/devices/28-00*";
+
+char *w1_addr = NULL; // The DS18B20 1Wire address in 16 char len
+
+int main(void){
+	printf("Enumerate DS18B20 sensors!\n");
+	glob_t glob_result;
+	glob(sys_path ,GLOB_TILDE,NULL,&glob_result);
+	for(unsigned int i=0; i<glob_result.gl_pathc; ++i){
+		if( w1_addr==NULL ){
+			printf( "   %s [SELECTED]\n", basename( glob_result.gl_pathv[i] ) );
+			w1_addr =  basename(glob_result.gl_pathv[i]);
+		} else {
+			printf( "   %s \n", basename( glob_result.gl_pathv[i] ) );
+		}
+	}
+
+	if( w1_addr == NULL ){
+		printf("Oups! no DS18B20 detected!");
+		return 0;
+	}
+
+	printf(" ");
+	printf("Read temperature from %s\n", w1_addr);
+	double tempNow;
+	DS18B20 w1Device1( w1_addr );
+	while(1){
+		tempNow = w1Device1.getTemp();
+		printf( "   temperature: %f degrees Celsius\n", tempNow );
+		sleep(1);
+	}
+
+	return 0;
+}
+```
+
+Voici le résultat produit par le programme lorsque l'on place le doigts dessus.
+
+``` bash
+$ make
+g++ -c ds18b20.cpp
+g++ -c read_ds18b20.cpp
+g++ -Wall -o read_ds18b20  -lpigpio -lrt -lpthread ds18b20.o read_ds18b20.o
+
+$ ./read_ds18b20
+Enumerate DS18B20 sensors!
+   28-00000d19fe94 [SELECTED]
+ Read temperature from 28-00000d19fe94
+   temperature: 23.437000 degrees Celsius
+   temperature: 23.437000 degrees Celsius
+   temperature: 24.375000 degrees Celsius
+   temperature: 25.375000 degrees Celsius
+   temperature: 26.000000 degrees Celsius
+   temperature: 26.375000 degrees Celsius
+
+```
 
 ## Relais
 
