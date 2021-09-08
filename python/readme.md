@@ -349,3 +349,6 @@ disp.display()
 ```
 
 Le code est disponible dans le fichier d'exemple [oled.py](examples/oled.py)
+
+# Ressources
+* [Ludik-Hat](https://shop.mchobby.be/fr/pi-hats/2114-ludik-hat-un-hat-pour-decouvrir-l-electronique-et-la-programmation-sur-raspberry-pi-3232100021143.html) @ MCHobby

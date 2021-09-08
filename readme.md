@@ -66,4 +66,4 @@ Le schéma de la carte est disponible dans le fichier [ludik-hat-schematic.pdf](
 
 # Liste d'achat
 
-* [Ludik-Hat](https://shop.mchobby.be/product.php?id_product=2114) pour Raspberry-Pi
+* [Ludik-Hat](https://shop.mchobby.be/fr/pi-hats/2114-ludik-hat-un-hat-pour-decouvrir-l-electronique-et-la-programmation-sur-raspberry-pi-3232100021143.html) @ MCHobby

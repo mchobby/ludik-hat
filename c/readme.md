@@ -51,11 +51,109 @@ Skipped non-user gpios: 0 1 28 29 30 31
 Tested user gpios: 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
 Failed user gpios: 4 5 13
 ```
+## pigpio - sudo requis
 
+Les programmes utilisateurs utilisant __pigpio__ doivent généralement être lancé avec un __sudo__.
+
+Si vous __oubliez le sudo__ alors il y a de fortes chances que vous puissiez voir le message d'erreur suivant s'afficher à l'écran.
+
+``` bash
+$ ./relais
+Activating relay once every second!
+2021-09-03 17:11:05 initCheckPermitted:
++---------------------------------------------------------+
+|Sorry, you don't have permission to run this program.    |
+|Try running as root, e.g. precede the command with sudo. |
++---------------------------------------------------------+
+```
+
+Une fois __démarré avec sudo__, le programme n'affiche plus de message d'erreur
+
+``` bash
+$ sudo ./relais
+Activating relay once every second!
+Relay ON
+Relay OFF
+Relay ON
+Relay OFF
+Relay ON
+Relay OFF
+Relay ON
+Relay OFF
+Relay ON
+...
+```
+
+## Installer rpi_ws281x - support NéoPixel
+
+L'option la plus prometteuse pour utiliser des NeoPixel est le projet [rpi_ws281x](https://github.com/jgarff/rpi_ws281x) qu'il faut entièrement compiler sur votre Raspberry-Pi.
+
+Cette compilation est longue et fastidieuse (testée sur un Pi400) et nécessite environ 2 heures.
+
+__Il n'est pas nécessaire de compiler le support NeoPixel immédiatement__, vous poyvez déjà profiter des autres fonctionnalités de la carte.
+
+### CMake
+Le projet rpi_ws281x est compiler avec l'outil CMake. Ne pouvant être installé depuis les dépôt avec `sudo apt install cmake` suite à une erreur, il a été nécessaire d'installer les sources de CMake puis le compiler.
+
+Installer les sources de cmake depuis et suivez les instructions d'installation [https://cmake.org/install/](https://cmake.org/install/) .
+
+Lors de la compilation, il faut indiquer que l'on n'utilise le support OPENSSL avec CMake. La commande `./bootstrap` devient donc:
+
+``` bash
+./bootstrap -- -DCMAKE_USE_OPENSSL=OFF
+```
+
+Puis poursuivre les étapes d'installation comme indiqué.
+
+### rpi_ws281x
+
+Cloner le dépôt Github [https://github.com/jgarff/rpi_ws281x.git](https://github.com/jgarff/rpi_ws281x.git) avec:
+
+``` bash
+cd ~
+git clone https://github.com/jgarff/rpi_ws281x.git
+```
+
+puis suivre les instructions d'installation détaillée dans le fichier [Readme](https://github.com/jgarff/rpi_ws281x.git)
+
+La toute dernière phase de l'installation met en place les fichiers headers permettant la création de vos propres programmes.
+
+``` bash
+$ sudo make install
+[ 77%] Built target ws2811
+[100%] Built target test
+Install the project...
+-- Install configuration: ""
+-- Up-to-date: /usr/local/lib/libws2811.a
+-- Up-to-date: /usr/local/include/ws2811/ws2811.h
+-- Up-to-date: /usr/local/include/ws2811/rpihw.h
+-- Up-to-date: /usr/local/include/ws2811/pwm.h
+-- Up-to-date: /usr/local/include/ws2811/clk.h
+-- Up-to-date: /usr/local/include/ws2811/dma.h
+-- Up-to-date: /usr/local/include/ws2811/gpio.h
+-- Up-to-date: /usr/local/include/ws2811/mailbox.h
+-- Up-to-date: /usr/local/include/ws2811/pcm.h
+-- Up-to-date: /usr/local/lib/pkgconfig/libws2811.pc
+
+$ ls /usr/local/include/
+ws2811
+```
+
+Le programme `test` inclus dans le cycle de compilation de la bibliothèque permettant de tester le bon fonctionnement de l'ensemble.
+
+``` bash
+$ ./test
+```
+
+La lecture du code de l'exemple [main.c](https://github.com/jgarff/rpi_ws281x/blob/master/main.c) permet de se faire une idée de l'utilisation de la bibliothèque.
+
+Ce qui produit le résultat suivant (voir aussi [cette video sur YouTube](https://youtu.be/4viMzmH2FeQ)):
+
+![Résultat](docs/_static/rpi_281x.jpg)
 
 # Tester
 
-Tous les exemples sont disponibles dans le sous-répertoire [c/examples](examples).
+Tous les exemples sont disponibles dans le sous-répertoire [c/examples](examples) du dépôt.
 
 ## Hello
 
@@ -563,20 +661,189 @@ Enumerate DS18B20 sensors!
 
 ## Relais
 
-ToDo
+Le petit script d'exemple ci-dessous active/désactive le relais toute les secondes.
+
+``` c++
+#include <stdio.h>
+#include <pigpio.h>
+#include <string>
+#include <unistd.h> // sleep
+
+#define GPIO_RELAIS  5
+
+int main(void){
+	printf("Activating relay once every second!\n");
+	gpioInitialise();
+
+	gpioSetMode( GPIO_RELAIS, PI_OUTPUT );
+
+	while( 1 ){
+		printf("Relay ON \n" );
+		gpioWrite( GPIO_RELAIS, 1 );
+		sleep( 1 );
+		printf("Relay OFF \n" );
+		gpioWrite( GPIO_RELAIS, 0 );
+		sleep( 1 );
+	}
+}
+```
+
+Une fois compilé, le programme peut être démarré avec un `sudo`.
+
+``` bash
+$ make
+g++ -c relais.cpp
+g++ -Wall -o relais  -lpigpio -lrt -lpthread relais.o
+
+$ ls
+Makefile  relais  relais.cpp  relais.o
+
+$ sudo ./relais
+Activating relay once every second!
+Relay ON
+Relay OFF
+Relay ON
+Relay OFF
+Relay ON
+Relay OFF
+Relay ON
+Relay OFF
+Relay ON
+...
+```
 
 ## Buzzer
 
-ToDo
+L'utilisation du Piezo Buzzer passe par la manipulation PWM (Pulse Width Modulation) du gpio 13.
+
+En utilisant un cycle utile à 50% et en faisant varier la fréquence du signal PWM, le buzzer produit alors les notes de musiques correspondant à la fréquence (La = 440 Hz).
+
+La bibliothèque `pigpio` dispose de la fonction [gpioPWM()](https://abyz.me.uk/rpi/pigpio/cif.html#gpioPWM) permettant de contrôler le cycle utile d'un GPIO.
+
+La fréquence est fixée à l'aide de [gpioSetPWMfrequency()](https://abyz.me.uk/rpi/pigpio/cif.html#gpioSetPWMfrequency) dont __la résolution est limitée__. Les fréquences PWM possibles dépendent du `sample rate` fixé parmi l'une des valeurs 1, 2, 4, 5, 8, 10 uSec (5 par défaut). __Il ne sera donc pas possible de jouer toutes les notes__ voir [ici pour plus d'informations](https://abyz.me.uk/rpi/pigpio/cif.html#gpioSetPWMfrequency) .
+
+``` c++
+#include <stdio.h>
+#include <pigpio.h>
+#include <string>
+#include <unistd.h> // sleep
+
+#define NUM_NOTES 8
+#define GPIO_BUZZER 13
+
+uint NOTE_FREQ[NUM_NOTES] = { 261, 293, 330, 349, 392, 440, 494, 523 };
+std::string NOTE_NAMES[NUM_NOTES] = {"Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do" };
+
+int main(void){
+	printf("Playing notes on Buzzer\n");
+	gpioInitialise();
+	gpioPWM( GPIO_BUZZER, 0 ); // PWM @ 0% = OFF
+
+	for( int i=0; i<NUM_NOTES; i++ ){
+		// Fix PWM Freq for note + Duty cycle at 50%
+		printf( "Playing note %s at %d Hz\n", NOTE_NAMES[i].data(), NOTE_FREQ[i] );
+		gpioSetPWMfrequency( GPIO_BUZZER, NOTE_FREQ[i]);
+		gpioPWM( GPIO_BUZZER, 128 ); // 0-255
+		sleep( 1 );
+	}
+
+	gpioPWM( GPIO_BUZZER, 0 ); // PWM @ 0% = OFF
+	printf( "C est fini!\n" );
+}
+```
 
 ## NeoPixel
 
-ToDo
+Pour utiliser des NeoPixels sur Raspberry-Pi en C/C++ il faut absolument passer par la phase de compilation de la bibliothèque rpi_ws281x (décrite en début de document).
 
-## Ecran OLED ????
+Le code ci-dessous provient de l'exemple [neopixel.cpp](examples/neopixel/neopixel.cpp) . Une fois le programme compilé avec `make`, il sera possible de lancer l'exécutable avec `sudo ./neotest` .
 
-ToDo ????
+![programme neotest](docs/_static/neotest.jpg)
+
+Les 4 LEDs présentes sur le Ludik-Hat sont déclarées à l'aide de la structure suivante:
+
+``` c++
+ws2811_t ledstring =
+{
+    .freq = WS2811_TARGET_FREQ,
+    .dmanum = 10,
+    .channel =
+		{
+        [0] =
+				{
+            .gpionum = 18,
+            .invert = 0,
+            .count = 4,
+            .strip_type = WS2811_TARGET_FREQ,
+            .brightness = 255,
+        },
+        [1] =
+				{
+            .gpionum = 0,
+            .invert = 0,
+            .count = 0,
+            .brightness = 0,
+        },
+    },
+};
+```
+
+Le bibliothèque fonctionne pour les les RGB+W (avec led Blanche), la LED RGB étant déclarée sur le `channel[0]` tandis que le contrôle de la LED blanche prend place sur le `channel[1]` de la structure.
+
+Le Ludik-Hat n'utilise que des LEDs NeoPixel RGB (sans LED blanche), raison pour laquelle la définition de `channel[1]` est réduite à sa plus simple expression.
+
+``` c++
+int main(void){
+		ws2811_return_t ret;
+
+		// Initialiser la structure ledstring
+		if ((ret = ws2811_init(&ledstring)) != WS2811_SUCCESS) {
+        fprintf(stderr, "ws2811_init failed: %s\n", ws2811_get_return_t_str(ret));
+        return ret;
+    }
+
+		// Fixer la couleur des 4 ière LEDs
+		ledstring.channel[0].leds[0] = 0x00200000; // rouge - red
+		ledstring.channel[0].leds[1] = 0x00002000; // vert - green
+		ledstring.channel[0].leds[2] = 0x00000020; // bleu - blue
+		ledstring.channel[0].leds[3] = 0x00201000; // orange
+
+		if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS) {
+				fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
+				return ret;
+		}
+
+		// attendre 10 seconds
+		sleep( 10 );
+
+		// Eteindre les LEDs
+		for( int i=0; i<4; i++ )
+			ledstring.channel[0].leds[i] = 0x00000000;
+
+		if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS) {
+				fprintf(stderr, "ws2811_render failed: %s\n", ws2811_get_return_t_str(ret));
+				return ret;
+		}
+```
+
+Dans le code ci-dessus, il est possible de voir l'assignation de la première LED en rouge avec:
+
+``` c++
+ledstring.channel[0].leds[0] = 0x00200000;
+```
+
+La couleur se défini avec un entier 32bits (4 octets) codé en 4 éléments hexadécimaux (0x00 à 0xFF).
+
+La codification est `0xWWRRGGBB` avec:
+* __WW__: intensité de la LED blanche donc 0x00 (0) puisque nous n'en avons pas sur le Ludik-Hat
+* __RR__: valeur de la composante __rouge__ de 0x00 à 0xFF (donc 0 à 255).
+* __GG__: valeur de la composante __verte__ de 0x00 à 0xFF (donc 0 à 255).
+* __BB__: valeur de la composante __bleue__ de 0x00 à 0xFF (donc 0 à 255).
+
 
 # Ressources
+* [Ludik-Hat](https://shop.mchobby.be/fr/pi-hats/2114-ludik-hat-un-hat-pour-decouvrir-l-electronique-et-la-programmation-sur-raspberry-pi-3232100021143.html) @ MCHobby
 * [pigpio](http://abyz.me.uk/rpi/pigpio/index.html)
 * [create Makefile for G++](https://earthly.dev/blog/g++-makefile/)
+* [CMake install](https://cmake.org/install/)
+* [rpi_ws281x](https://github.com/jgarff/rpi_ws281x)
