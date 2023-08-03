@@ -41,7 +41,7 @@ Les liens ci-dessous renvoient vers les différentes documentations:
 * [Utiliser Ludik-Hat avec Python](python/readme.md)
 * Utiliser Ludik-Hat avec Scratch __à faire__
 * [Utiliser Ludik-Hat avec C](c/readme.md)
-* Utiliser Ludik-Hat avec MicroPython __à faire__
+* [Utiliser Ludik-Hat avec MicroPython](https://arduiblog.com/2021/09/27/ludik-hat/) sur ArduiBlog.fr
 
 # Ressources
 ## DS18B20 : le capteur de température 1-Wire
